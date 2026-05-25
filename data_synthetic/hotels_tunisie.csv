@@ -1,0 +1,16 @@
+hotel,region,taux_occupation_pct,revenus_TND,nb_touristes,nb_chambres,saison
+Hotel Phenicia,Tunis,78,45000,320,200,ete
+Hotel Hasdrubal,Sousse,85,62000,410,280,ete
+Hotel Djerba Plaza,Djerba,91,78000,580,350,ete
+Hotel El Mouradi,Hammamet,72,38000,290,180,printemps
+Hotel Novotel,Tunis,65,29000,210,150,hiver
+Hotel Riu Palace,Djerba,88,71000,520,300,ete
+Hotel Vincci,Sousse,76,41000,340,190,printemps
+Hotel Laico,Tunis,60,25000,180,160,hiver
+Hotel Marhaba,Sousse,82,58000,450,260,ete
+Hotel Palm Beach,Hammamet,69,33000,250,170,printemps
+Hotel Iberostar,Djerba,94,85000,610,380,ete
+Hotel Sentido,Hammamet,79,47000,360,220,ete
+Hotel Caribbean,Monastir,71,36000,270,165,printemps
+Hotel Regency,Tunis,83,61000,430,240,ete
+Hotel Kanta,Tozeur,55,18000,130,90,hiver
