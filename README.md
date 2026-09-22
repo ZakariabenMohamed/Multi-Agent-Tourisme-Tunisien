@@ -1,4 +1,4 @@
-# DS2 — Secure Multi-Agent Tool-Orchestration
+# Secure Multi-Agent Tool-Orchestration
 ## Secteur : Tourisme et Hôtellerie en Tunisie
 
 ---
