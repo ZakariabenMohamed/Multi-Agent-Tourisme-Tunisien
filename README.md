@@ -123,16 +123,10 @@ projet_ds2/
 
 ---
 
-## 7. Scénarios
-
-| Scénario | Description                                    | Statut       |
-|----------|------------------------------------------------|--------------|
-| 1        | Dashboard KPI depuis fichier CSV local         | ✅ Implémenté |
-| 2        | Appel API Banque Mondiale (indicateurs Tunisie)| 🔜 Semaine 2  |
 
 ---
 
-## 8. Installation et commandes
+## 7. Installation et commandes
 
 ### Installer les dépendances
 
