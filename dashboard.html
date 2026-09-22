@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS2 — Multi-Agent Dashboard Tunisie</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --panel:     #111318;
+    --border:    #1e2230;
+    --accent:    #e8c84a;
+    --accent2:   #4ae8b0;
+    --accent3:   #e84a6f;
+    --text:      #d4daf0;
+    --muted:     #5a6080;
+    --planner:   #4a90e8;
+    --executor:  #e8c84a;
+    --critic:    #4ae8b0;
+    --error:     #e84a6f;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar-logo span { color: var(--accent); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .nav {
+    display: flex;
+    gap: 4px;
+  }
+  .nav-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 14px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .nav-btn:hover { color: var(--text); border-color: var(--border); }
+  .nav-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(232,200,74,0.06); }
+
+  .status-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    letter-spacing: 1px;
+  }
+
+  /* ── LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 53px);
+  }
+
+  /* ── LEFT SIDEBAR ── */
+  .sidebar {
+    width: 260px;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* Launcher */
+  .launcher-field {
+    margin-bottom: 10px;
+  }
+  .launcher-label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .launcher-select, .launcher-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .launcher-select:focus, .launcher-input:focus { border-color: var(--accent); }
+
+  .run-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    margin-top: 6px;
+  }
+  .run-btn:hover { background: #fff; }
+  .run-btn:active { transform: scale(0.98); }
+  .run-btn.running { background: var(--muted); cursor: not-allowed; }
+
+  /* Run list */
+  .run-item {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .run-item:hover { border-color: var(--accent); background: rgba(232,200,74,0.04); }
+  .run-item.selected { border-color: var(--accent); background: rgba(232,200,74,0.08); }
+  .run-id-label { font-size: 12px; font-weight: 600; }
+  .run-status-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .run-task-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* ── CENTER PANEL ── */
+  .center {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: none;
+  }
+  .center.active { display: block; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .section-header h2 {
+    font-family: var(--sans);
+    font-size: 20px;
+    font-weight: 800;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge-ok      { border: 1px solid var(--accent2); color: var(--accent2); }
+  .badge-error   { border: 1px solid var(--error); color: var(--error); }
+  .badge-warning { border: 1px solid var(--accent); color: var(--accent); }
+
+  /* Timeline */
+  .timeline { display: flex; flex-direction: column; gap: 6px; }
+
+  .timeline-step {
+    display: grid;
+    grid-template-columns: 90px 28px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  .timeline-step:hover { border-color: var(--accent); }
+  .timeline-step.expanded { border-color: var(--accent); background: rgba(232,200,74,0.04); }
+
+  .step-time { font-size: 10px; color: var(--muted); }
+  .step-icon {
+    width: 28px; height: 28px; border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .step-icon.planner  { background: rgba(74,144,232,0.15); border: 1px solid var(--planner); }
+  .step-icon.executor { background: rgba(232,200,74,0.12); border: 1px solid var(--executor); }
+  .step-icon.critic   { background: rgba(74,232,176,0.12); border: 1px solid var(--critic); }
+  .step-icon.system   { background: rgba(90,96,128,0.2);   border: 1px solid var(--muted); }
+  .step-icon.error    { background: rgba(232,74,111,0.12); border: 1px solid var(--error); }
+
+  .step-info { min-width: 0; }
+  .step-action { font-weight: 600; font-size: 12px; }
+  .step-desc { font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .step-meta { text-align: right; flex-shrink: 0; }
+  .step-status { font-size: 10px; letter-spacing: 1px; }
+  .step-dur { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .step-detail {
+    display: none;
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .timeline-step.expanded .step-detail { display: block; }
+
+  /* Metrics grid */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .metric-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+  .metric-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .metric-value {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .metric-unit { font-size: 12px; color: var(--muted); margin-left: 4px; font-family: var(--mono); }
+  .metric-sub  { font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+  /* KPI Table */
+  .kpi-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+  .kpi-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .kpi-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Safety Panel */
+  .safety-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    background: var(--panel);
+  }
+  .safety-label { font-size: 12px; }
+  .safety-value {
+    font-size: 11px;
+    padding: 3px 8px;
+    letter-spacing: 0.5px;
+  }
+  .safety-allowed { color: var(--accent2); border: 1px solid var(--accent2); }
+  .safety-blocked { color: var(--error);   border: 1px solid var(--error); }
+
+  /* Failure injection console */
+  .fi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .fi-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 10px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .fi-btn:hover { border-color: var(--error); color: var(--error); }
+  .fi-btn.active { border-color: var(--error); background: rgba(232,74,111,0.08); color: var(--error); }
+  .fi-badge { font-size: 9px; opacity: 0.6; display: block; margin-top: 3px; }
+
+  .fi-result {
+    padding: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    min-height: 60px;
+    white-space: pre-wrap;
+  }
+
+  /* Chart bar */
+  .bar-chart { margin-bottom: 24px; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .bar-label { width: 100px; font-size: 10px; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 18px; background: var(--border); position: relative; }
+  .bar-fill  { height: 100%; transition: width 0.6s ease; }
+  .bar-val   { width: 60px; font-size: 11px; text-align: right; flex-shrink: 0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* Animations */
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: none; } }
+
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .log-line { font-size: 11px; padding: 3px 0; border-bottom: 1px solid rgba(30,34,48,0.5); color: var(--muted); }
+  .log-ok      { color: var(--accent2); }
+  .log-error   { color: var(--error); }
+  .log-warning { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="dot"></div>
+    DS2 <span>·</span> Multi-Agent Tourisme Tunisien
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="showTab('trace')">Run / Trace</button>
+    <button class="nav-btn" onclick="showTab('metrics')">Métriques</button>
+    <button class="nav-btn" onclick="showTab('safety')">Sécurité</button>
+    <button class="nav-btn" onclick="showTab('inject')">Injection</button>
+  </div>
+  <div class="status-badge" id="globalStatus">PRÊT</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- LAUNCHER -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Lancer un run</div>
+      <div class="launcher-field">
+        <label class="launcher-label">Scénario</label>
+        <select class="launcher-select" id="scenarioSelect">
+          <option value="scenario1">Scénario 1 — CSV local</option>
+          <option value="scenario2">Scénario 2 — API mock</option>
+        </select>
+      </div>
+      <div class="launcher-field">
+        <label class="launcher-label">Injection de panne</label>
+        <select class="launcher-select" id="panneSelect">
+          <option value="none">Aucune</option>
+          <option value="wrong_path">wrong_path — CSV introuvable</option>
+          <option value="rate_429">rate_429 — HTTP 429</option>
+          <option value="corrupt_data">corrupt_data — Colonnes manquantes</option>
+          <option value="zero_revenue">zero_revenue — Revenus nuls</option>
+        </select>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="lancerRun()">▶ Lancer</button>
+    </div>
+
+    <!-- RUN LIST -->
+    <div class="sidebar-section" style="flex:1; overflow-y:auto;">
+      <div class="sidebar-title">Historique des runs</div>
+      <div id="runList"></div>
+    </div>
+  </div>
+
+  <!-- TAB: TRACE -->
+  <div class="center active" id="tab-trace">
+    <div class="section-header">
+      <h2>Timeline d'exécution</h2>
+      <span class="badge badge-ok" id="traceRunId">Sélectionner un run</span>
+    </div>
+
+    <!-- Agent legend -->
+    <div style="display:flex; gap:16px; margin-bottom:16px; font-size:11px;">
+      <span><span style="color:var(--planner)">■</span> Planner</span>
+      <span><span style="color:var(--executor)">■</span> Executor</span>
+      <span><span style="color:var(--critic)">■</span> Critic</span>
+      <span><span style="color:var(--muted)">■</span> Système</span>
+      <span><span style="color:var(--error)">■</span> Erreur</span>
+    </div>
+
+    <div class="timeline fade-in" id="timeline">
+      <div style="color:var(--muted); padding:20px; text-align:center; border:1px dashed var(--border);">
+        Lancez un run ou sélectionnez-en un dans l'historique
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: METRICS -->
+  <div class="center" id="tab-metrics">
+    <div class="section-header">
+      <h2>Métriques & expériences</h2>
+    </div>
+
+    <div class="metrics-grid" id="metricsGrid">
+      <div class="metric-card">
+        <div class="metric-label">Runs lancés</div>
+        <div class="metric-value" id="mTotalRuns">0</div>
+        <div class="metric-sub">cette session</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Taux de succès</div>
+        <div class="metric-value" id="mSuccessRate">—<span class="metric-unit">%</span></div>
+        <div class="metric-sub">runs validés par le Critic</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cache DP hits</div>
+        <div class="metric-value" id="mCacheHits">0</div>
+        <div class="metric-sub">plans réutilisés</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Durée moy./étape</div>
+        <div class="metric-value" id="mAvgStep">—<span class="metric-unit">ms</span></div>
+        <div class="metric-sub">sur tous les runs</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Pannes récupérées</div>
+        <div class="metric-value" id="mRecovered">0</div>
+        <div class="metric-sub">backtracking réussi</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Isolation concurrent.</div>
+        <div class="metric-value" style="color:var(--accent2)">✓ OK</div>
+        <div class="metric-sub">pas de fuite d'état</div>
+      </div>
+    </div>
+
+    <!-- Backtracking vs DP comparison -->
+    <div class="section-header" style="margin-top:8px;">
+      <h2 style="font-size:15px;">Backtracking seul vs Backtracking + DP</h2>
+    </div>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <div class="bar-label">BT seul</div>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--muted);"></div></div>
+        <div class="bar-val" style="color:var(--muted);">~18ms</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">BT + DP</div>
+        <div class="bar-track"><div class="bar-fill" style="width:28%;background:var(--accent2);"></div></div>
+        <div class="bar-val" style="color:var(--accent2);">~5ms</div>
+      </div>
+    </div>
+
+    <!-- KPI recap table -->
+    <div class="section-header" style="margin-top:8px;">
+      <h2 style="font-size:15px;">Dernier rapport KPI</h2>
+    </div>
+    <table class="kpi-table">
+      <thead>
+        <tr>
+          <th>Indicateur</th><th>Valeur</th><th>Statut</th>
+        </tr>
+      </thead>
+      <tbody id="kpiTableBody">
+        <tr><td colspan="3" style="color:var(--muted);text-align:center;">Aucun run effectué</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TAB: SAFETY -->
+  <div class="center" id="tab-safety">
+    <div class="section-header">
+      <h2>Sécurité & politiques</h2>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sidebar-title" style="margin-bottom:10px;">Liste blanche — URLs autorisées</div>
+      <div class="safety-row"><span class="safety-label">api.worldbank.org</span><span class="safety-value safety-allowed">AUTORISÉ</span></div>
+      <div class="safety-row"><span class="safety-label">*.anthropic.com</span><span class="safety-value safety-blocked">BLOQUÉ</span></div>
+      <div class="safety-row"><span class="safety-label">*.unknown-host.com</span><span class="safety-value safety-blocked">BLOQUÉ</span></div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sidebar-title" style="margin-bottom:10px;">Politiques d'exécution</div>
+      <div class="safety-row"><span class="safety-label">Max étapes par run</span><span class="safety-value safety-allowed">10</span></div>
+      <div class="safety-row"><span class="safety-label">Max retries par outil</span><span class="safety-value safety-allowed">3</span></div>
+      <div class="safety-row"><span class="safety-label">Timeout global (s)</span><span class="safety-value safety-allowed">30</span></div>
+      <div class="safety-row"><span class="safety-label">Redaction chemins</span><span class="safety-value safety-allowed">ACTIVE</span></div>
+      <div class="safety-row"><span class="safety-label">Isolation runs</span><span class="safety-value safety-allowed">ACTIVE</span></div>
+      <div class="safety-row"><span class="safety-label">Exfiltration données</span><span class="safety-value safety-blocked">BLOQUÉ</span></div>
+    </div>
+
+    <div>
+      <div class="sidebar-title" style="margin-bottom:10px;">Dernières décisions de sécurité</div>
+      <div id="safetyLog" style="font-size:11px; color:var(--muted);">
+        <div class="log-line log-ok">✓ Chemin CSV validé dans le sandbox autorisé</div>
+        <div class="log-line log-ok">✓ Schéma d'entrée vérifié — 7 colonnes attendues</div>
+        <div class="log-line log-ok">✓ Taux d'occupation dans la plage [0,100]</div>
+        <div class="log-line log-ok">✓ Revenus positifs — rapport accepté par le Critic</div>
+        <div class="log-line log-warning">⚠ Chemin absolu redacté dans le journal</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: INJECT -->
+  <div class="center" id="tab-inject">
+    <div class="section-header">
+      <h2>Console d'injection de pannes</h2>
+    </div>
+    <p style="color:var(--muted); font-size:12px; margin-bottom:20px;">
+      Déclenche une panne simulée et observe la réponse du système (retry, backtracking, arrêt propre).
+    </p>
+
+    <div class="fi-grid">
+      <button class="fi-btn" onclick="simulerPanne('wrong_path')">
+        💥 wrong_path
+        <span class="fi-badge">CSV introuvable → file_reader échoue</span>
+      </button>
+      <button class="fi-btn" onclick="simulerPanne('rate_429')">
+        🔁 rate_429
+        <span class="fi-badge">HTTP 429 → retry x3 puis arrêt</span>
+      </button>
+      <button class="fi-btn" onclick="simulerPanne('corrupt_data')">
+        🗑️ corrupt_data
+        <span class="fi-badge">Colonne manquante → schéma rejeté</span>
+      </button>
+      <button class="fi-btn" onclick="simulerPanne('zero_revenue')">
+        🚫 zero_revenue
+        <span class="fi-badge">Revenus=0 → Critic rejette</span>
+      </button>
+    </div>
+
+    <div class="sidebar-title" style="margin-bottom:8px;">Résultat de la simulation</div>
+    <div class="fi-result" id="fiResult">Cliquez sur un type de panne pour simuler la réponse du système…</div>
+  </div>
+
+</div><!-- end .main -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DONNÉES DE RUNS SIMULÉES (représente les vrais logs JSONL)
+// ═══════════════════════════════════════════════════════════════
+const RUNS_DATA = {
+  "run_001": {
+    label: "run_001", scenario: "Scénario 1", panne: "aucune",
+    statut: "OK", duree_ms: 312,
+    steps: [
+      { time:"10:00:00", action:"start",       agent:"system",   status:"OK",    dur:1,   desc:"Démarrage run_001", detail:{tache:"rapport_hotels"} },
+      { time:"10:00:00", action:"planner",     agent:"planner",  status:"OK",    dur:3,   desc:"Plan créé : 3 étapes", detail:{nb_etapes:3, backtrack:false} },
+      { time:"10:00:00", action:"file_reader", agent:"executor", status:"OK",    dur:45,  desc:"15 hôtels lus depuis hotels_tunisie.csv", detail:{nb_hotels:15} },
+      { time:"10:00:00", action:"calculator",  agent:"executor", status:"OK",    dur:12,  desc:"KPIs calculés — taux moy. 76.5%", detail:{moyenne_occupation:"76.5%", revenus:727000} },
+      { time:"10:00:00", action:"reporter",    agent:"executor", status:"OK",    dur:8,   desc:"Rapport JSON généré", detail:{statut:"ATTENTION", meilleur_hotel:"Hotel Iberostar"} },
+      { time:"10:00:00", action:"critic",      agent:"critic",   status:"OK",    dur:2,   desc:"Rapport validé", detail:{valide:true} },
+      { time:"10:00:00", action:"end",         agent:"system",   status:"OK",    dur:1,   desc:"Mission accomplie", detail:{message:"Terminé"} },
+    ],
+    rapport: { taux:"76.5%", hotel:"Hotel Iberostar", revenus:"727 000 TND", region:"Djerba", alertes:7 }
+  },
+  "run_002": {
+    label: "run_002", scenario: "Scénario 1", panne: "aucune",
+    statut: "OK", duree_ms: 298,
+    steps: [
+      { time:"10:01:00", action:"start",       agent:"system",   status:"OK",    dur:1,   desc:"Démarrage run_002 (Semaine 2)", detail:{tache:"rapport_hotels"} },
+      { time:"10:01:00", action:"planner",     agent:"planner",  status:"OK",    dur:3,   desc:"Plan normal — backtracking inactif", detail:{nb_etapes:3} },
+      { time:"10:01:00", action:"file_reader", agent:"executor", status:"OK",    dur:44,  desc:"15 hôtels lus", detail:{nb_hotels:15} },
+      { time:"10:01:00", action:"calculator",  agent:"executor", status:"OK",    dur:11,  desc:"KPIs calculés", detail:{moyenne_occupation:"76.5%"} },
+      { time:"10:01:00", action:"reporter",    agent:"executor", status:"OK",    dur:7,   desc:"Rapport généré", detail:{statut:"ATTENTION"} },
+      { time:"10:01:00", action:"critic",      agent:"critic",   status:"OK",    dur:2,   desc:"Rapport validé", detail:{valide:true} },
+      { time:"10:01:00", action:"end",         agent:"system",   status:"OK",    dur:1,   desc:"Mission accomplie", detail:{} },
+    ],
+    rapport: { taux:"76.5%", hotel:"Hotel Iberostar", revenus:"727 000 TND", region:"Djerba", alertes:7 }
+  },
+  "run_003": {
+    label: "run_003", scenario: "Scénario 1", panne: "wrong_path",
+    statut: "ERREUR", duree_ms: 156,
+    steps: [
+      { time:"10:02:00", action:"start",       agent:"system",   status:"OK",    dur:1,   desc:"Démarrage run_003 — panne injectée", detail:{panne:"wrong_path"} },
+      { time:"10:02:00", action:"planner",     agent:"planner",  status:"OK",    dur:3,   desc:"Plan créé (tentative 1)", detail:{nb_etapes:3, backtrack:false} },
+      { time:"10:02:00", action:"file_reader", agent:"executor", status:"ERREUR",dur:12,  desc:"💥 CSV introuvable : fichier_inexistant_PANNE.csv", detail:{erreur:"Fichier introuvable"} },
+      { time:"10:02:00", action:"planner",     agent:"planner",  status:"ERREUR",dur:2,   desc:"Backtracking déclenché — aucune alternative", detail:{etapes_echouees:["file_reader"]} },
+      { time:"10:02:00", action:"end",         agent:"system",   status:"ERREUR",dur:1,   desc:"Run terminé en ÉCHEC — arrêt propre", detail:{} },
+    ],
+    rapport: null
+  },
+  "run_004": {
+    label: "run_004", scenario: "Scénario 2", panne: "aucune",
+    statut: "OK", duree_ms: 201,
+    steps: [
+      { time:"10:03:00", action:"start",       agent:"system",   status:"OK",    dur:1,   desc:"Scénario 2 — API mock normale", detail:{indicateur:"ST.INT.ARVL"} },
+      { time:"10:03:00", action:"api_client",  agent:"executor", status:"OK",    dur:52,  desc:"5 points retournés par le mock", detail:{nb_points:5, source:"mock_worldbank"} },
+      { time:"10:03:00", action:"transformer", agent:"executor", status:"OK",    dur:8,   desc:"Données transformées — hausse 33.1% YoY", detail:{variation_yoy:33.1, tendance:"hausse"} },
+      { time:"10:03:00", action:"reporter",    agent:"executor", status:"OK",    dur:3,   desc:"Rapport Scénario 2 généré", detail:{statut:"OK"} },
+      { time:"10:03:00", action:"end",         agent:"system",   status:"OK",    dur:1,   desc:"Scénario 2 terminé", detail:{} },
+    ],
+    rapport: { taux:"N/A", hotel:"N/A", revenus:"9 000 000 touristes (2023)", region:"N/A", alertes:0 }
+  },
+  "run_005": {
+    label: "run_005", scenario: "Scénario 2", panne: "rate_429",
+    statut: "ERREUR", duree_ms: 980,
+    steps: [
+      { time:"10:04:00", action:"start",        agent:"system",   status:"OK",       dur:1,   desc:"Scénario 2 — HTTP 429 injecté", detail:{mode:"rate_429"} },
+      { time:"10:04:00", action:"api_client",   agent:"executor", status:"ATTENTION",dur:300, desc:"HTTP 429 — tentative 1/3", detail:{erreur:"rate_limit_429", tentative:1} },
+      { time:"10:04:00", action:"api_client",   agent:"executor", status:"ATTENTION",dur:300, desc:"HTTP 429 — tentative 2/3", detail:{erreur:"rate_limit_429", tentative:2} },
+      { time:"10:04:00", action:"api_client",   agent:"executor", status:"ATTENTION",dur:300, desc:"HTTP 429 — tentative 3/3", detail:{erreur:"rate_limit_429", tentative:3} },
+      { time:"10:04:00", action:"end",          agent:"system",   status:"ERREUR",   dur:1,   desc:"API indisponible après 3 retries — arrêt propre", detail:{} },
+    ],
+    rapport: null
+  },
+};
+
+const SESSION = { totalRuns:5, successRuns:3, cacheHits:2, recovered:0 }; // Stocke les compteurs pour l'onglet "Métriques".
+let selectedRun = null; // run_id actuellement sélectionné (ex: "run_001")
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showTab(tab) { //Change d'onglet (Run/Trace, Métriques, Sécurité, Injection). 
+  document.querySelectorAll('.center').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  // Affiche seulement celui cliqué et met à jour les métriques si on va dans l'onglet "Métriques".
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'metrics') updateMetrics();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RUN LIST
+// ═══════════════════════════════════════════════════════════════
+function renderRunList() { //Affiche les étapes d'un run dans la barre latérale gauche.
+  const container = document.getElementById('runList');
+  container.innerHTML = '';
+  Object.values(RUNS_DATA).reverse().forEach(run => {
+    const color = run.statut === 'OK' ? 'var(--accent2)' : 'var(--error)';
+    const div = document.createElement('div');
+    div.className = 'run-item' + (selectedRun === run.label ? ' selected' : '');
+    div.onclick = () => selectRun(run.label);
+    div.innerHTML = `
+      <div>
+        <div class="run-id-label">${run.label}</div>
+        <div class="run-task-label">${run.scenario} · ${run.panne !== 'aucune' ? '💥 '+run.panne : '✓ normal'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="run-status-dot" style="background:${color}; margin-left:auto;"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;">${run.duree_ms}ms</div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function selectRun(runId) { // Affiche les détails d'un run sélectionné (timeline, rapport KPI).
+  selectedRun = runId;// Mémoriser la sélection
+  renderRunList();
+  renderTimeline(RUNS_DATA[runId]);// Afficher la timeline du run
+  document.getElementById('traceRunId').textContent = runId;// Mettre à jour le badge
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════════════════════
+const AGENT_ICONS = { planner:'🧠', executor:'⚙️', critic:'🔍', system:'◆', error:'💥' };
+const AGENT_CLASSES = { planner:'planner', executor:'executor', critic:'critic', system:'system' };
+
+function renderTimeline(run) {
+  const container = document.getElementById('timeline');
+  container.innerHTML = '';// Vider la timeline
+  run.steps.forEach((step, i) => { // // Pour chaque étape → crée une div avec :
+    // - l'icône de l'agent (🧠 Planner, ⚙️ Executor, 🔍 Critic)
+    // - la description
+    // - le statut (OK / ERREUR)
+    // - les détails JSON (visibles au clic)
+    const agentClass = step.status === 'ERREUR' ? 'error' : (AGENT_CLASSES[step.agent] || 'system');
+    const statusColor = step.status === 'OK' ? 'var(--accent2)' : step.status === 'ERREUR' ? 'var(--error)' : 'var(--accent)';
+    const icon = AGENT_ICONS[step.agent] || '◆'; // Choisir l'icône selon l'agent
+    // Créer l'élément HTML
+    const div = document.createElement('div');
+    div.className = 'timeline-step fade-in';
+    div.style.animationDelay = (i * 50) + 'ms'; // Animation décalée pour chaque étape 
+    div.onclick = () => div.classList.toggle('expanded'); // Permet d'afficher/masquer les détails au clic 
+    // Contenu de chaque étape : temps, icône, action, description, statut, durée et détails (affichés au clic).
+    div.innerHTML = `
+      <div class="step-time">${step.time}</div> 
+      <div class="step-icon ${agentClass}">${icon}</div>
+      <div class="step-info">
+        <div class="step-action">${step.action}</div>
+        <div class="step-desc">${step.desc}</div>
+      </div>
+      <div class="step-meta">
+        <div class="step-status" style="color:${statusColor}">${step.status}</div>
+        <div class="step-dur">${step.dur}ms</div>
+      </div>
+      <div class="step-detail">${JSON.stringify(step.detail, null, 2)}</div>
+    `;
+    container.appendChild(div);
+  }); //container.appendChild(div) pour ajouter chaque étape à la timeline. 
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LANCER UN RUN (simulé)
+// ═══════════════════════════════════════════════════════════════
+function lancerRun() { // Simule l'exécution d'un nouveau run (sans backend réel).
+  const btn = document.getElementById('runBtn');
+  const scenario = document.getElementById('scenarioSelect').value; // "scenario1" ou "scenario2"
+  const panne    = document.getElementById('panneSelect').value;
+  const status   = document.getElementById('globalStatus');
+// Désactiver le bouton pendant la simulation et afficher un état "En cours…" avec un style différent. Après un délai simulé, créer un nouveau run avec des étapes générées aléatoirement (succès ou échec selon la panne choisie) et mettre à jour l'interface (liste des runs, timeline, métriques).
+  btn.textContent = '⏳ En cours…';
+  btn.classList.add('running');
+  btn.disabled = true;
+  status.textContent = 'RUNNING';
+  status.style.borderColor = 'var(--accent)';
+  status.style.color = 'var(--accent)';
+// Générer un nouvel ID (run_006, run_007...) et déterminer si le run doit réussir ou échouer selon la panne sélectionnée (aucune panne = succès, sinon échec).
+  const runNum = Object.keys(RUNS_DATA).length + 1;
+  const newId  = `run_${String(runNum).padStart(3,'0')}`;
+  const isOK   = panne === 'none';
+// Simuler une attente (temps de chargement) avant de créer le run et mettre à jour l'interface.
+  setTimeout(() => {
+    // Créer un run simulé , // Créer les étapes selon le scénario et la panne (plus d'étapes et de détails en cas de succès, ou une étape d'erreur si une panne est injectée).
+    const steps = [];
+    steps.push({ time: new Date().toLocaleTimeString(), action:"start", agent:"system", status:"OK", dur:1, desc:`Démarrage ${newId}`, detail:{scenario, panne} });
+
+    if (isOK) { // Succès : étapes normales avec détails complets
+      steps.push({ time: new Date().toLocaleTimeString(), action:"planner",     agent:"planner",  status:"OK",    dur:3,  desc:"Plan créé : 3 étapes", detail:{nb_etapes:3} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"file_reader", agent:"executor", status:"OK",    dur:44, desc:"15 hôtels lus", detail:{nb_hotels:15} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"calculator",  agent:"executor", status:"OK",    dur:11, desc:"KPIs calculés", detail:{moyenne_occupation:"76.5%"} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"reporter",    agent:"executor", status:"OK",    dur:7,  desc:"Rapport généré", detail:{statut:"ATTENTION"} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"critic",      agent:"critic",   status:"OK",    dur:2,  desc:"Rapport validé", detail:{valide:true} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"end",         agent:"system",   status:"OK",    dur:1,  desc:"Mission accomplie", detail:{} });
+    } else {
+      steps.push({ time: new Date().toLocaleTimeString(), action:"planner",     agent:"planner",  status:"OK",    dur:3,  desc:"Plan créé", detail:{nb_etapes:3} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"file_reader", agent:"executor", status:"ERREUR",dur:12, desc:`💥 Panne injectée : ${panne}`, detail:{erreur:panne} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"planner",     agent:"planner",  status:"ERREUR",dur:2,  desc:"Backtracking — aucune alternative", detail:{etapes_echouees:["file_reader"]} });
+      steps.push({ time: new Date().toLocaleTimeString(), action:"end",         agent:"system",   status:"ERREUR",dur:1,  desc:"Arrêt propre après échec", detail:{} });
+    }
+// Ajouter le nouveau run aux données et mettre à jour les compteurs de la session (totalRuns, successRuns, recovered). Puis rafraîchir l'affichage de la liste des runs, sélectionner le nouveau run pour afficher sa timeline, et mettre à jour les métriques.
+    RUNS_DATA[newId] = {
+      label: newId, scenario: scenario==="scenario1"?"Scénario 1":"Scénario 2",
+      panne, statut: isOK?"OK":"ERREUR", duree_ms: Math.floor(Math.random()*100)+200,
+      steps, rapport: isOK ? { taux:"76.5%", hotel:"Hotel Iberostar", revenus:"727 000 TND", region:"Djerba", alertes:7 } : null
+    };
+ // Mettre à jour les compteurs
+    SESSION.totalRuns++;
+    if (isOK) SESSION.successRuns++;
+    else SESSION.recovered += 0;
+ // Rafraîchir l'affichage
+    renderRunList();
+    selectRun(newId);
+    updateMetrics();
+// Réactiver le bouton
+    btn.textContent = '▶ Lancer';
+    btn.classList.remove('running');
+    btn.disabled = false;
+    status.textContent = isOK ? 'SUCCÈS' : 'ÉCHEC';
+    status.style.borderColor = isOK ? 'var(--accent2)' : 'var(--error)';
+    status.style.color       = isOK ? 'var(--accent2)' : 'var(--error)';
+
+    setTimeout(() => { status.textContent='PRÊT'; status.style.borderColor='var(--accent2)'; status.style.color='var(--accent2)'; }, 3000); // Remettre à "PRÊT" après 3s
+
+  }, 1800);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MÉTRIQUES
+// ═══════════════════════════════════════════════════════════════
+function updateMetrics() { //Met à jour les chiffres dans l'onglet "Métriques".
+  const total = SESSION.totalRuns;
+  const rate  = total > 0 ? Math.round(SESSION.successRuns / total * 100) : 0;
+// Mettre à jour les valeurs dans le HTML
+  document.getElementById('mTotalRuns').textContent   = total;
+  document.getElementById('mSuccessRate').innerHTML   = rate + '<span class="metric-unit">%</span>';
+  document.getElementById('mCacheHits').textContent   = SESSION.cacheHits;
+  document.getElementById('mAvgStep').innerHTML       = '18<span class="metric-unit">ms</span>';
+  document.getElementById('mRecovered').textContent   = SESSION.recovered;
+
+  // Mettre à jour le tableau des KPIs avec le dernier run réussi
+  const runs  = Object.values(RUNS_DATA).filter(r => r.rapport && r.rapport.hotel !== 'N/A');
+  const tbody = document.getElementById('kpiTableBody');
+  if (runs.length > 0) {
+    const r = runs[runs.length-1].rapport;
+    tbody.innerHTML = `
+      <tr><td>Taux occupation moyen</td><td style="color:var(--accent)">${r.taux}</td><td><span style="color:var(--accent2)">✓ Valide</span></td></tr>
+      <tr><td>Meilleur hôtel</td><td>${r.hotel}</td><td><span style="color:var(--accent2)">✓ Valide</span></td></tr>
+      <tr><td>Revenus totaux</td><td>${r.revenus}</td><td><span style="color:var(--accent2)">✓ Positifs</span></td></tr>
+      <tr><td>Meilleure région</td><td>${r.region}</td><td><span style="color:var(--accent2)">✓ Valide</span></td></tr>
+      <tr><td>Hôtels en alerte</td><td style="color:var(--accent)">${r.alertes}</td><td><span style="color:var(--accent)">⚠ ATTENTION</span></td></tr>
+    `;// Remplir le tableau avec les KPIs du dernier rapport valide. Si aucun run n'a de rapport, afficher un message d'attente.
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FAILURE INJECTION CONSOLE
+// ═══════════════════════════════════════════════════════════════
+const FI_RESPONSES = {
+  wrong_path: `💥 PANNE : wrong_path
+─────────────────────────────────────
+Chemin injecté : fichier_inexistant_PANNE.csv
+Outil concerné : file_reader (Étape 1)
+
+Réponse du système :
+  ▶ Tentative 1/3 : Fichier introuvable → ERREUR
+  ▶ (Erreur de schéma : pas de retry pour les erreurs de chemin)
+  ▶ Backtracking déclenché par le Planner
+  ▶ Aucune alternative disponible pour file_reader
+  → Arrêt propre avec message explicite
+  → Journal : logs/run_003.jsonl — statut=ERREUR
+
+✅ Comportement attendu : arrêt propre, pas d'exception non gérée`,
+
+  rate_429: `💥 PANNE : rate_429 (HTTP 429)
+─────────────────────────────────────
+Mode injecté : rate_429 sur le mock API
+Outil concerné : api_client (Scénario 2)
+
+Réponse du système :
+  ▶ Tentative 1/3 : HTTP 429 → ATTENTION → wait 300ms
+  ▶ Tentative 2/3 : HTTP 429 → ATTENTION → wait 300ms
+  ▶ Tentative 3/3 : HTTP 429 → ATTENTION → wait 300ms
+  ▶ Max retries atteint → ERREUR
+  → "API indisponible après tous les retries"
+  → Journal : logs/run_005.jsonl — statut=ERREUR
+
+✅ Comportement attendu : retry borné, arrêt propre`,
+
+  corrupt_data: `💥 PANNE : corrupt_data
+─────────────────────────────────────
+Panne injectée : suppression colonne 'revenus_TND'
+Outil concerné : calculator (Étape 2)
+
+Réponse du système :
+  ▶ file_reader : OK (le CSV se lit)
+  ▶ calculator  : KeyError 'revenus_TND' → ERREUR
+  ▶ Schéma de sortie rejeté par l'Executor
+  ▶ Backtracking déclenché — pas d'alternative
+  → Arrêt propre
+  → Journal : statut=ERREUR
+
+✅ Comportement attendu : erreur de schéma interceptée`,
+
+  zero_revenue: `💥 PANNE : zero_revenue
+─────────────────────────────────────
+Panne injectée : revenus_TND = 0 pour tous les hôtels
+Outil concerné : reporter → critic
+
+Réponse du système :
+  ▶ file_reader : OK
+  ▶ calculator  : OK (revenus_totaux = 0)
+  ▶ reporter    : rapport généré avec revenus_totaux_TND = 0
+  ▶ critic      : REJETÉ — "Revenus invalides : 0"
+  → Arrêt propre avec message du Critic
+  → Journal : step_critic = ERREUR
+
+✅ Comportement attendu : Critic détecte et bloque`
+};
+
+function simulerPanne(type) { // Affiche une description détaillée de la réponse du système pour le type de panne sélectionné.
+  //Ça ne fait que afficher du texte pré-écrit — c'est une simulation visuelle, pas un vrai appel backend.
+  document.querySelectorAll('.fi-btn').forEach(b => b.classList.remove('active'));
+  event.target.closest('.fi-btn').classList.add('active');
+  const result = document.getElementById('fiResult');
+  result.style.color = 'var(--muted)';
+  result.textContent = 'Simulation en cours…';
+  setTimeout(() => {
+    result.textContent = FI_RESPONSES[type];
+    result.style.color = type === 'wrong_path' || type === 'rate_429' ? 'var(--error)' : 'var(--accent)';
+  }, 600);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+// Au chargement de la page 
+renderRunList();// Affiche la liste des runs
+selectRun('run_001');// Sélectionne run_001 par défaut
+updateMetrics();// Initialise les métriques
+</script>
+</body>
+</html>
